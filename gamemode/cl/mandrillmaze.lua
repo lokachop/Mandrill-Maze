@@ -75,9 +75,9 @@ local cam_points = {
 		dir = Vector(0, -1, 0),
 	}, {
 		pos = Vector(-3, 0.769231 - 4, 1),
-		dir = Vector(-1, 0, 0),
+		dir = Vector(-1, -1, 0),
 	}, {
-		pos = Vector(-4, 0.769231 - 4, 1),
+		pos = Vector(-4, 0.769231 - 4.35, 1),
 		dir = Vector(-1, 0, 0),
 	}, {
 		pos = Vector(-5, 0.769231 - 4, 1),
@@ -154,8 +154,8 @@ LK3D.SetSunDir(Vector(.5, -.5, 1):GetNormalized())
 LK3D.FAR_Z = 55
 LK3D.NEAR_Z = 0.3 -- fix shadow z fight
 function MandMaze.RenderMainCanvas()
-	LK3D.SetCamPos(LocalPlayer():EyePos() / 100)
-	LK3D.SetCamAng(LocalPlayer():EyeAngles())
+	--LK3D.SetCamPos(LocalPlayer():EyePos() / 100)
+	--LK3D.SetCamAng(LocalPlayer():EyeAngles())
 	updateCamPath()
 
 	LK3D.SetWireFrame(false)

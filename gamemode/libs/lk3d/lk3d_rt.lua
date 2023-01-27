@@ -135,6 +135,10 @@ local function getPxColor(tex, uv)
 
 	local idx = math_floor(ux + uy * rtw)
 	local org = texPixels[tex][idx]
+	if not org then
+		calculateTexPixels(tex)
+		return {255, 0, 0}
+	end
 	return {org[1], org[2], org[3]}
 end
 
