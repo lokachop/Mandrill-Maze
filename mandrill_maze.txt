@@ -1,0 +1,8 @@
+"mandrill_maze"
+{
+    "base"          "base"
+    "title"         "Mandrill Maze"
+    "maps"          "*"
+    "category"	    "other"
+    "menusystem"    "1"
+}
