@@ -316,3 +316,209 @@ function LK3D.GetTextureByIndex(index)
 
 	return LK3D.Textures[index]
 end
+
+
+
+local function lktcomp_d_print(...)
+	if not LK3D.Debug then
+		return
+	end
+
+	MsgC(Color(255, 180, 100), "[LKTCOMP]: ", Color(255, 220, 200), ..., "\n")
+end
+
+
+
+local LKTCOMP_VER = 1
+local LKTCOMP_ENCODERS = {
+	[1] = function(name, f_pointer, fname) -- rev1
+		f_pointer:Seek(0)
+
+		-- marker
+		f_pointer:WriteByte(string.byte("L")) -- L
+		f_pointer:WriteByte(string.byte("K")) -- K
+		f_pointer:WriteByte(string.byte("T")) -- T
+		f_pointer:WriteByte(string.byte("C")) -- C
+
+		f_pointer:WriteByte(1) -- rev1
+
+
+		local tex_rt = LK3D.Textures[name].rt
+		local tw, th = tex_rt:Width(), tex_rt:Height()
+		local px_count = tw * th
+		f_pointer:WriteUShort(tw)
+		f_pointer:WriteUShort(th)
+
+
+		file.Write("lk3d/lktcomp_aux.txt", "")
+		local aux_file = file.Open("lk3d/lktcomp_aux.txt", "wb", "DATA")
+
+		render.PushRenderTarget(tex_rt)
+			render.CapturePixels()
+			for i = 0, px_count - 1 do
+				local xc = i % tw
+				local yc = math.floor(i / tw)
+				local r, g, b, a = render.ReadPixel(xc, yc)
+				aux_file:WriteULong(r + bit.lshift(g, 8) + bit.lshift(b, 16) + bit.lshift(a, 24))
+
+			end
+		render.PopRenderTarget()
+		aux_file:Close()
+
+
+		-- do run length encoding
+		aux_file = file.Open("lk3d/lktcomp_aux.txt", "rb", "DATA")
+		aux_file:Seek(0)
+		lktcomp_d_print("ByteSize: " .. aux_file:Size())
+		lktcomp_d_print("PxSize: " .. px_count * 4)
+
+		local con_bytes = 0
+		for i = 0, px_count - 1 do
+			aux_file:Seek(i * 4)
+			local ulong_curr = aux_file:ReadULong()
+			local ulong_next = aux_file:ReadULong()
+			if ulong_curr ~= ulong_next or (con_bytes >= 255) then
+				f_pointer:WriteByte(con_bytes)
+				f_pointer:WriteULong(ulong_curr)
+				con_bytes = 0
+			else
+				con_bytes = con_bytes + 1
+			end
+		end
+
+		-- mark end
+		f_pointer:WriteByte(string.byte("E")) -- E
+		f_pointer:WriteByte(string.byte("N"))
+		f_pointer:WriteByte(string.byte("D"))
+		f_pointer:WriteByte(string.byte("E"))
+		f_pointer:Close()
+		aux_file:Close()
+
+		-- do lzma
+		local act_name = fname .. ".txt"
+		file.Write(fname .. "_raw" .. ".txt", file.Read(act_name, "DATA"))
+		file.Write(fname .. "_nolzma" .. ".txt", util.Base64Encode(file.Read(act_name, "DATA"), true))
+
+		file.Write(act_name, util.Base64Encode(util.Compress(file.Read(act_name, "DATA")), true))
+	end
+}
+
+-- compresses texture into base64 string which can be later loaded in
+function LK3D.CompressTexture(name)
+	LK3D.D_Print("Compressing texture \"" .. name .. "\" with LKTCOMP revision " .. LKTCOMP_VER .. "....")
+	if not LK3D.Textures[name] then
+		LK3D.D_Print("Texture \"" .. name .. "\" doesnt exist!")
+		return
+	end
+
+	file.CreateDir("lk3d/lktcomp_textures")
+
+	local fnm = "lk3d/lktcomp_textures/" .. name
+	file.Write(fnm, "")
+
+	local f_pointer = file.Open(fnm .. ".txt", "wb", "DATA")
+	if LKTCOMP_ENCODERS[LKTCOMP_VER] then
+		local fine, err = pcall(LKTCOMP_ENCODERS[LKTCOMP_VER], name, f_pointer, fnm)
+		if not fine then
+			LK3D.D_Print("Error compressing texture \"" .. name .. "\" with LKTCOMP revision " .. LKTCOMP_VER .. ": \"" .. err .. "\"")
+		end
+	end
+end
+
+
+local LKTCOMP_DECODERS = {
+	[1] = function(name, f_pointer)
+		local tw, th = f_pointer:ReadUShort(), f_pointer:ReadUShort()
+		lktcomp_d_print(name .. " is " .. tw .. "x" .. th .. "...")
+
+
+		LK3D.DeclareTextureFromFunc(name, tw, th, function()
+			render.Clear(255, 0, 255, 255, true, true)
+		end)
+
+
+		local rt = LK3D.Textures[name].rt
+
+		local ow, oh = ScrW(), ScrH()
+		render.SetViewPort(0, 0, tw, th)
+		cam.Start2D()
+		render.PushRenderTarget(rt)
+			render.SetColorMaterialIgnoreZ()
+			draw.NoTexture()
+			local px_count = tw * th
+			local read_pixels = 0
+			for _ = 0, px_count do
+				if read_pixels >= px_count then
+					break
+				end
+
+				local r_continuity_rle = f_pointer:ReadByte()
+				local r_rgba = f_pointer:ReadULong()
+
+				local r_a = math.floor(bit.rshift(r_rgba, 24) % 256)
+				local r_b = math.floor(bit.rshift(r_rgba, 16) % 256)
+				local r_g = math.floor(bit.rshift(r_rgba, 8) % 256)
+				local r_r = math.floor(r_rgba % 256)
+				for j = 0, r_continuity_rle do
+					local currx = (read_pixels + j) % tw
+					local curry = math.floor((read_pixels + j) / tw)
+
+					render.SetViewPort(currx, curry, 1, 1)
+					render.Clear(r_r, r_g, r_b, r_a)
+					render.SetViewPort(0, 0, tw, th)
+				end
+
+				read_pixels = read_pixels + (1 + r_continuity_rle)
+			end
+		render.PopRenderTarget()
+		cam.End2D()
+		render.SetViewPort(0, 0, ow, oh)
+
+		if f_pointer:ReadULong() == 1162104389 then
+			lktcomp_d_print("Decompressed successfully!")
+		end
+	end
+}
+
+
+function LK3D.DecompressTexture(name, data)
+	LK3D.D_Print("Decompressing LKTCOMP \"" .. name .. "\"...")
+	if not data then
+		return
+	end
+
+	local data_nocomp = util.Decompress(util.Base64Decode(data) or "")
+
+	if not data_nocomp then
+		return
+	end
+
+	file.Write("lk3d/lkt_decomp_temp.txt", data_nocomp)
+	local f_pointer = file.Open("lk3d/lkt_decomp_temp.txt", "rb", "DATA")
+
+
+	-- read header
+	local head = f_pointer:ReadULong()
+	if head ~= 1129597772 then
+		lktcomp_d_print("Header LKTC no match!")
+		lktcomp_d_print(": " .. head)
+		f_pointer:Close()
+		return
+	end
+
+	local rev = f_pointer:ReadByte()
+	lktcomp_d_print(name .. " is rev" .. rev .. "...")
+
+
+
+	if LKTCOMP_DECODERS[rev] then
+		local fine, err = pcall(LKTCOMP_DECODERS[rev], name, f_pointer, texture_ptr)
+		if not fine then
+			LK3D.D_Print("Error decompressing \"" .. name .. "\" with LKTC revision " .. rev .. ": \"" .. err .. "\"")
+		end
+	else
+		LK3D.D_Print("No decoder for rev " .. rev .. ", try updating LK3D otherwise texture might be corrupt!")
+	end
+
+	f_pointer:Close()
+end

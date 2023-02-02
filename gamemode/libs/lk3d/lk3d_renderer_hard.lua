@@ -2003,7 +2003,7 @@ function Renderer.Render()
 			render.SetStencilCompareFunction(STENCIL_NOTEQUAL)
 
 			cam_End3D()
-			surface.SetDrawColor(0, 0, 0, 196)
+			surface.SetDrawColor(0, 0, 0, LK3D.SHADOW_INTENSITY or 196)
 			surface.DrawRect(0, 0, ScrW(), ScrH())
 			render.SetStencilEnable(false)
 		else

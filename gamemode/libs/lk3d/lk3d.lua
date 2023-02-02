@@ -43,6 +43,7 @@ LK3D.Ortho = false
 LK3D.FAR_Z = 200
 LK3D.NEAR_Z = .05
 LK3D.SHADOW_EXTRUDE = 20
+LK3D.SHADOW_INTENSITY = 196
 LK3D.DoExpensiveTrace = false
 LK3D.TraceReturnTable = false
 LK3D.FilterMode = TEXFILTER.LINEAR

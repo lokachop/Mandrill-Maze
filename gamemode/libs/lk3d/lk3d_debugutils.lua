@@ -5,6 +5,10 @@ LK3D = LK3D or {}
 
 LK3D.DebugUtils = LK3D.DebugUtils or {}
 function LK3D.DebugUtils.Line(start, endpos, life, col)
+	if not LK3D.Debug then
+		return
+	end
+
 	local t = LK3D.CurrUniv["debug_obj"]
 	if not t then
 		LK3D.CurrUniv["debug_obj"] = {}
@@ -25,6 +29,10 @@ function LK3D.DebugUtils.Line(start, endpos, life, col)
 end
 
 function LK3D.DebugUtils.Cross(pos, size, life, col)
+	if not LK3D.Debug then
+		return
+	end
+
 	local t = LK3D.CurrUniv["debug_obj"]
 	if not t then
 		LK3D.CurrUniv["debug_obj"] = {}

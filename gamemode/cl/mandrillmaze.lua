@@ -12,10 +12,10 @@ function MandMaze.SetupMaterials()
 
 	local mandrill_mat = Material("mandrill_maze/mandrill.png", "nocull ignorez noclamp smooth")
 	LK3D.DeclareTextureFromFunc("mandrill", 512, 512, function()
-		render.Clear(255, 0, 0, 255, true, true)
+		render.Clear(0, 0, 0, 255, true, true)
 		surface.SetDrawColor(255, 255, 255, 255)
 		surface.SetMaterial(mandrill_mat)
-		surface.DrawTexturedRectUV(0, 0, ScrW(), ScrH(), 0, 1, 1, 0)
+		surface.DrawTexturedRectUV(4, 4, ScrW() - 8, ScrH() - 8, 0, .82, 1, 0)
 	end)
 end
 MandMaze.SetupMaterials()
@@ -23,8 +23,8 @@ MandMaze.SetupMaterials()
 MandMaze.UnivMain = LK3D.NewUniverse()
 LK3D.PushUniverse(MandMaze.UnivMain)
 	LK3D.AddModelToUniverse("mandrill_maze", "mandrill_maze")
-	LK3D.SetModelPosAng("mandrill_maze", Vector(0, 0, 0), Angle(0, 0, 90))
-	LK3D.SetModelScale("mandrill_maze", Vector(1, 1, 1))
+	LK3D.SetModelPosAng("mandrill_maze", Vector(0, 0, .1), Angle(0, 0, 90))
+	LK3D.SetModelScale("mandrill_maze", Vector(1, .85, 1))
 	LK3D.SetModelMat("mandrill_maze", "mandrill")
 	LK3D.SetModelFlag("mandrill_maze", "NO_LIGHTING", true)
 	LK3D.SetModelFlag("mandrill_maze", "NO_VW_CULLING", true)
@@ -38,10 +38,10 @@ LK3D.PushUniverse(MandMaze.UnivMain)
 
 
 	LK3D.AddModelToUniverse("mandrill_maze_floor", "plane")
-	LK3D.SetModelPosAng("mandrill_maze_floor", Vector(-8, 0, 0), Angle(0, 0, 90))
+	LK3D.SetModelPosAng("mandrill_maze_floor", Vector(-8, 0, .1), Angle(0, 0, 90))
 	LK3D.SetModelScale("mandrill_maze_floor", Vector(16, 16, 16))
 	LK3D.SetModelMat("mandrill_maze_floor", "white")
-	LK3D.SetModelCol("mandrill_maze_floor", Color(128, 128, 128))
+	LK3D.SetModelCol("mandrill_maze_floor", Color(128 + 32, 128 + 32, 128 + 32))
 	LK3D.SetModelFlag("mandrill_maze_floor", "NO_LIGHTING", true)
 	LK3D.SetModelFlag("mandrill_maze_floor", "NO_VW_CULLING", true)
 	LK3D.SetModelFlag("mandrill_maze_floor", "NO_NORM_CULLING", true)
@@ -150,9 +150,10 @@ end
 LK3D.SetRenderer(LK3D.Const.RENDER_HARD)
 LK3D.SetFOV(90)
 LK3D.SetWireFrame(false)
-LK3D.SetSunDir(Vector(.5, -.5, 1):GetNormalized())
+LK3D.SetSunDir(Vector(.5 + .08, -.5 - .08, 1):GetNormalized())
 LK3D.FAR_Z = 55
 LK3D.NEAR_Z = 0.3 -- fix shadow z fight
+LK3D.SHADOW_INTENSITY = 128 + 32 -- lighter shadows
 function MandMaze.RenderMainCanvas()
 	--LK3D.SetCamPos(LocalPlayer():EyePos() / 100)
 	--LK3D.SetCamAng(LocalPlayer():EyeAngles())
@@ -163,11 +164,28 @@ function MandMaze.RenderMainCanvas()
 	LK3D.PushRenderTarget(rtRender)
 		LK3D.PushUniverse(MandMaze.UnivMain)
 			LK3D.RenderClear(16, 147, 224)
+			LK3D.RenderQuick(function()
+				local top_c = {16, 147, 224}
+				local bottom_c = {24, 147 + 12, 224 + 12}
+				local div = 8
+				local hd = ScrH() / div
+				for i = 0, hd do
+					local d = math.min((i / hd) * 2, 1)
+					local lr = Lerp(d, top_c[1], bottom_c[1])
+					local lg = Lerp(d, top_c[2], bottom_c[2])
+					local lb = Lerp(d, top_c[3], bottom_c[3])
+					surface.SetDrawColor(lr, lg, lb, 255)
+					surface.DrawRect(0, i * div, ScrW(), hd)
+				end
+
+			end)
 			LK3D.SetAmbientCol(Color(96, 96, 96))
 
 			LK3D.RenderActiveUniverse()
 		LK3D.PopUniverse()
 	LK3D.PopRenderTarget(rtRender)
+
+
 
 
 
